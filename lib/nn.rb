@@ -3,25 +3,16 @@ class NN
 
   def initialize(shape:)
     @graph = Graph.new(shape)
-    graph.assign_edge_weights { 0.5; rand(0.2..0.8) }
+    graph.assign_edge_weights { 0.5 }
   end
 
   def run(input_values)
-    # seed the input layer with the values we wish to run
     graph.assign_input_values(input_values)
 
-    # get the first layer of nodes
     nodes = graph.inputs
-
-    # going left to right take each layer of nodes
     while graph.outputs_for(nodes).any?
-      # get all the output nodes
       nodes = graph.outputs_for(nodes)
-
-      # for every output node
       nodes.each do |node|
-
-        # sum the product of its edges and their respective parent nodes
         node.value = sigmoid(
           node
             .inbound_edges
@@ -32,42 +23,31 @@ class NN
   end
 
   def train(input_values, output_values)
-    # clear all previous values
-    graph.nodes.each(&:clean)
-
-    # seed all edges and nodes
+    graph.clean_nodes
     run(input_values)
 
-    # gather the outputs
+    # assign errors
+    graph.outputs.zip(output_values).each do |node, value|
+      node.error = node.value - value
+    end
+
     nodes = graph.outputs
-
-    # set true values for outputs
-    nodes.zip(output_values).each { |node, value| node.true_value = value }
-
-    # going right to left, take each layer of nodes
     while graph.inputs_for(nodes).any?
+      nodes = graph.inputs_for(nodes)
 
       nodes.each do |node|
-        if node.output?
-          node.error = node.true_value - node.value
-          node.delta = node.error * derivative_sigmoid(node.value)
-        end
+        node.error = node
+          .outbound_edges
+          .sum { |edge| edge.weight * edge.child_node.error }
 
-        node
-          .inbound_edges
-          .each { |edge| edge.parent_node.error += edge.weight * node.delta }
       end
+    end
 
-      graph
-        .inputs_for(nodes)
-        .each { |n| n.delta = n.error * derivative_sigmoid(n.value) }
-
-      nodes
-        .map(&:inbound_edges)
-        .flatten
-        .each { |e| e.weight += e.parent_node.value * e.child_node.delta }
-
-      nodes = graph.inputs_for(nodes)
+    graph.edges.each do |edge|
+      edge.weight -= (
+        edge.parent_node.value *
+        edge.child_node.error * derivative_sigmoid(edge.child_node.value)
+      )
     end
   end
 

@@ -57,12 +57,12 @@ sets = poss_outputs.map do |output|
     [1, 0, 1] => [output[2]],
     [1, 1, 1] => [output[3]],
   }
-end
+end.shuffle.first((ARGV[0]||100))
 
 sets.each do |training_set|
   nn = NN.new(shape: [3, 1])
 
-  2_000.times do |i|
+  ((ARGV[1] || 50_000).to_i).times do |i|
     break if i % 50 == 0 && i != 0 && analyse_set(nn, training_set)[:accuracy] == 1.0
     training_set.to_a.shuffle.to_h.each { |input, output| nn.train(input, output) }
   end

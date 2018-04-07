@@ -23,6 +23,10 @@ class Graph
     outputs.map(&:inbound_parent_nodes).flatten.uniq
   end
 
+  def clean_nodes
+    nodes.each(&:clean)
+  end
+
   def to_s
     @nodes.map do |n|
       [
